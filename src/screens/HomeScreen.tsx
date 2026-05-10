@@ -13,12 +13,13 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '../theme/ThemeContext';
 import { useUser } from '../lib/UserContext';
+import { useProfile } from '../lib/ProfileContext';
 import { Header } from '../components/Header';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import {
   CheckResult,
-  MissingApiKeyError,
+  MissingFamilyCodeError,
   checkLabelImage,
   checkRestaurantItem,
 } from '../lib/anthropic';
@@ -27,21 +28,23 @@ type Props = {
   onResult: (r: CheckResult) => void;
   onSettings: () => void;
   onChangeUser: () => void;
-  requireApiKeySetup: () => void;
+  requireFamilyCodeSetup: () => void;
 };
 
 type Tab = 'label' | 'restaurant';
 
-export function HomeScreen({ onResult, onSettings, onChangeUser, requireApiKeySetup }: Props) {
+export function HomeScreen({ onResult, onSettings, onChangeUser, requireFamilyCodeSetup }: Props) {
   const { palette } = useTheme();
   const { mode } = useUser();
+  const { profile } = useProfile();
   const [tab, setTab] = useState<Tab>('label');
   const [restaurant, setRestaurant] = useState('');
   const [dish, setDish] = useState('');
   const [loading, setLoading] = useState(false);
 
   const isLily = mode === 'lily';
-  const userBadge = isLily ? '👧 Lily' : '👨‍👩‍👧 Grown-up';
+  const childName = profile.childName || 'Kid';
+  const userBadge = isLily ? `👧 ${childName}` : '👨‍👩‍👧 Grown-up';
 
   async function pickFromLibrary() {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -87,6 +90,7 @@ export function HomeScreen({ onResult, onSettings, onChangeUser, requireApiKeySe
       const mediaType = guessMediaType(asset.uri, asset.mimeType);
       const result = await checkLabelImage({
         mode: mode ?? 'adult',
+        profile,
         base64: asset.base64,
         mediaType,
       });
@@ -107,6 +111,7 @@ export function HomeScreen({ onResult, onSettings, onChangeUser, requireApiKeySe
     try {
       const result = await checkRestaurantItem({
         mode: mode ?? 'adult',
+        profile,
         restaurant: restaurant.trim() || undefined,
         dish: dish.trim(),
       });
@@ -119,13 +124,13 @@ export function HomeScreen({ onResult, onSettings, onChangeUser, requireApiKeySe
   }
 
   function handleErr(e: unknown) {
-    if (e instanceof MissingApiKeyError) {
+    if (e instanceof MissingFamilyCodeError) {
       Alert.alert(
-        'API key needed',
-        'Add your Anthropic API key in Settings to start checking ingredients.',
+        'Family code needed',
+        'Enter your family code in Settings to start checking ingredients.',
         [
           { text: 'Cancel', style: 'cancel' },
-          { text: 'Open settings', onPress: requireApiKeySetup },
+          { text: 'Open settings', onPress: requireFamilyCodeSetup },
         ],
       );
       return;

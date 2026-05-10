@@ -15,45 +15,50 @@ import { useUser } from '../lib/UserContext';
 import { Header } from '../components/Header';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
-import { clearApiKey, getApiKey, setApiKey } from '../lib/secureKey';
+import { clearFamilyCode, getFamilyCode, setFamilyCode } from '../lib/secureKey';
 
-export function SettingsScreen({ onBack }: { onBack: () => void }) {
+export function SettingsScreen({
+  onBack,
+  onOpenProfile,
+}: {
+  onBack: () => void;
+  onOpenProfile: () => void;
+}) {
   const { palette, pref, setPref } = useTheme();
   const { setMode } = useUser();
-  const [keyInput, setKeyInput] = useState('');
-  const [hasKey, setHasKey] = useState(false);
-  const [reveal, setReveal] = useState(false);
+  const [codeInput, setCodeInput] = useState('');
+  const [hasCode, setHasCode] = useState(false);
 
   useEffect(() => {
-    getApiKey().then((k) => {
-      if (k) {
-        setHasKey(true);
-        setKeyInput(k);
+    getFamilyCode().then((c) => {
+      if (c) {
+        setHasCode(true);
+        setCodeInput(c);
       }
     });
   }, []);
 
   async function save() {
-    const v = keyInput.trim();
+    const v = codeInput.trim();
     if (!v) {
-      Alert.alert('Empty key', 'Paste your Anthropic API key first.');
+      Alert.alert('Empty code', 'Type your family code first.');
       return;
     }
-    await setApiKey(v);
-    setHasKey(true);
-    Alert.alert('Saved', 'API key stored securely on this device.');
+    await setFamilyCode(v);
+    setHasCode(true);
+    Alert.alert('Saved', 'Family code stored on this device.');
   }
 
   async function remove() {
-    Alert.alert('Remove API key?', 'You will need to re-enter it before checking ingredients.', [
+    Alert.alert('Remove family code?', "You'll need to re-enter it before checking again.", [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Remove',
         style: 'destructive',
         onPress: async () => {
-          await clearApiKey();
-          setKeyInput('');
-          setHasKey(false);
+          await clearFamilyCode();
+          setCodeInput('');
+          setHasCode(false);
         },
       },
     ]);
@@ -70,45 +75,45 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
 
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         <Card>
-          <Text style={[styles.section, { color: palette.text }]}>Anthropic API key</Text>
+          <Text style={[styles.section, { color: palette.text }]}>Family code</Text>
           <Text style={[styles.body, { color: palette.textMuted }]}>
-            The app calls Claude directly with your key. It's stored securely on this device only.
+            The code your family shares to use the app. Stored on this device only.
           </Text>
 
-          <View style={styles.inputRow}>
-            <TextInput
-              value={keyInput}
-              onChangeText={setKeyInput}
-              placeholder="sk-ant-…"
-              placeholderTextColor={palette.textDim}
-              secureTextEntry={!reveal}
-              autoCapitalize="none"
-              autoCorrect={false}
-              style={[
-                styles.input,
-                {
-                  color: palette.text,
-                  backgroundColor: palette.inputBg,
-                  borderColor: palette.inputBorder,
-                },
-              ]}
-            />
-          </View>
+          <TextInput
+            value={codeInput}
+            onChangeText={setCodeInput}
+            placeholder="e.g. lily-2026"
+            placeholderTextColor={palette.textDim}
+            autoCapitalize="none"
+            autoCorrect={false}
+            style={[
+              styles.input,
+              {
+                color: palette.text,
+                backgroundColor: palette.inputBg,
+                borderColor: palette.inputBorder,
+              },
+            ]}
+          />
 
-          <View style={styles.actionsRow}>
-            <Pressable onPress={() => setReveal((r) => !r)} hitSlop={8}>
-              <Text style={[styles.linkText, { color: palette.accent }]}>
-                {reveal ? 'Hide' : 'Show'}
-              </Text>
-            </Pressable>
-            {hasKey ? (
+          {hasCode ? (
+            <View style={styles.actionsRow}>
               <Pressable onPress={remove} hitSlop={8}>
                 <Text style={[styles.linkText, { color: palette.unsafeAccent }]}>Remove</Text>
               </Pressable>
-            ) : null}
-          </View>
+            </View>
+          ) : null}
 
-          <Button label="Save key" onPress={save} fullWidth style={{ marginTop: 8 }} />
+          <Button label="Save code" onPress={save} fullWidth style={{ marginTop: 8 }} />
+        </Card>
+
+        <Card>
+          <Text style={[styles.section, { color: palette.text }]}>Allergy profile</Text>
+          <Text style={[styles.body, { color: palette.textMuted }]}>
+            Customize whose allergies the app is checking for.
+          </Text>
+          <Button label="Edit profile" onPress={onOpenProfile} variant="secondary" fullWidth />
         </Card>
 
         <Card>
@@ -156,7 +161,6 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
               onBack();
             }}
             fullWidth
-            style={{ marginTop: 8 }}
           />
         </Card>
 
@@ -173,7 +177,6 @@ const styles = StyleSheet.create({
   scroll: { paddingHorizontal: 20, paddingBottom: 32, gap: 14 },
   section: { fontSize: 16, fontWeight: '700', marginBottom: 6 },
   body: { fontSize: 14, lineHeight: 20, marginBottom: 12 },
-  inputRow: { marginBottom: 8 },
   input: {
     borderRadius: 12,
     borderWidth: 1,
@@ -183,8 +186,8 @@ const styles = StyleSheet.create({
   },
   actionsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 4,
+    justifyContent: 'flex-end',
+    marginTop: 6,
   },
   linkText: { fontSize: 14, fontWeight: '600' },
   segmented: {

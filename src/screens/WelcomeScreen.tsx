@@ -2,10 +2,13 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { useUser } from '../lib/UserContext';
+import { useProfile } from '../lib/ProfileContext';
 
 export function WelcomeScreen({ onSettings }: { onSettings: () => void }) {
   const { palette } = useTheme();
   const { setMode } = useUser();
+  const { profile } = useProfile();
+  const childName = profile.childName || 'Kid';
 
   return (
     <View style={[styles.root, { backgroundColor: palette.bg }]}>
@@ -37,7 +40,7 @@ export function WelcomeScreen({ onSettings }: { onSettings: () => void }) {
             ]}
           >
             <Text style={styles.choiceEmoji}>👧</Text>
-            <Text style={[styles.choiceLabel, { color: palette.text }]}>It's me, Lily!</Text>
+            <Text style={[styles.choiceLabel, { color: palette.text }]}>It's me, {childName}!</Text>
             <Text style={[styles.choiceHint, { color: palette.textMuted }]}>
               Friendly, simple words and big buttons.
             </Text>

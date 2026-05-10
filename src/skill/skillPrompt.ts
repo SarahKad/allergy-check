@@ -1,69 +1,34 @@
-// Bundled at build time so Metro doesn't need extra resolvers.
-// Source of truth lives at src/skill/SKILL.md — keep these in sync.
+import { Profile } from '../lib/profile';
 
-export const SKILL_PROMPT = `# Allergy Check Skill
+export type Mode = 'lily' | 'adult';
+export type CheckKind = 'label' | 'restaurant';
 
-This skill helps assess whether a food, product, or restaurant dish is safe for a specific child with known allergies and potential trigger ingredients.
-
----
-
-## About This Child's Allergies
-
-### Confirmed Allergies — Always Unsafe
-These must be avoided in ALL forms, including hidden or processed forms:
-
-- **Nuts** — all kinds: tree nuts (almonds, cashews, walnuts, pistachios, pecans, hazelnuts, macadamia, etc.) and peanuts. **Coconut is safe and is NOT considered a nut here.**
-- **Eggs** — all forms: raw, cooked, baked, powdered, or as an ingredient (e.g. egg wash, mayonnaise, meringue, albumin, lecithin from eggs)
-- **Green peas and pea protein** — including snap peas, snow peas, pea flour, pea starch, pea protein isolate. Note: other legumes like lentils or chickpeas are NOT on this list unless separately flagged.
-- **Mustard / mustard seed** — including mustard powder, mustard oil, mustard greens, and any ingredient simply listed as "mustard"
-- **Shellfish** — shrimp, crab, lobster, crayfish, clams, oysters, scallops, mussels, etc. (finned fish is not on this list)
-
-### Potential Triggers — Flag With Caution
-These don't always cause a reaction but should be flagged so the caregiver can decide:
-
-- **Raw onion** — cooked onion is generally fine; flag if raw preparation is likely or unclear
-- **Raw garlic** — cooked garlic is generally fine; flag if raw preparation is likely or unclear
-- **"Spices"** or **"natural flavors"** — vague labeling that could hide mustard, onion, or garlic; always flag these
-
----
-
+const HIDDEN_INGREDIENT_TABLE = `
 ## Hidden Ingredient Watch List
 
-These common ingredient names can hide confirmed allergens:
+These common ingredient names can hide confirmed allergens. Use this as a
+reference even if the family hasn't typed every alias into their profile:
 
 | Hidden name | What it actually is |
 |---|---|
 | Albumin / albumen | Egg protein |
 | Globulin, lysozyme, mayonnaise, meringue | Egg-based |
 | Egg wash, ovomucin, ovalbumin | Egg |
+| Lecithin (egg) | Egg |
 | Pea protein isolate / concentrate | Green pea derivative |
 | Pea flour, pea starch | Green pea derivative |
 | Mustard oil, mustard powder, mustard greens | Mustard |
 | Mixed nuts, trail mix, nut butter | May contain all nut varieties |
 | Marzipan, praline, nougat | Often contain nuts |
 | Surimi ("imitation crab") | Often made from shellfish |
-| "Spices", "natural flavors", "seasoning blend" | May contain mustard, garlic, onion |
-
----
-
-## Quick Reference: What's Safe vs. Not
-
-- Coconut — safe
-- Cooked onion / cooked garlic — generally fine
-- Finned fish (salmon, tuna, cod, etc.) — not on the allergy list
-- Other legumes (lentils, chickpeas, beans) — not on the allergy list unless in a dish with pea protein
-- Any nut (except coconut) — UNSAFE
-- Eggs in any form — UNSAFE
-- Peas or pea protein in any form — UNSAFE
-- Mustard in any form — UNSAFE
-- Any shellfish — UNSAFE
+| Casein, caseinate, whey, lactose | Dairy / milk |
+| Tamari, miso, edamame, soy lecithin | Soy |
+| Tahini, gomashio, halva | Sesame |
+| Worcestershire, Caesar dressing, fish sauce | Often contain anchovy / fish |
+| "Spices", "natural flavors", "seasoning blend" | May hide mustard, garlic, onion |
 `;
 
-export type Mode = 'lily' | 'adult';
-
-export type CheckKind = 'label' | 'restaurant';
-
-export const RESPONSE_FORMAT_INSTRUCTIONS = `
+const RESPONSE_FORMAT_INSTRUCTIONS = `
 You will respond with a single valid JSON object — and nothing else. No prose
 outside the JSON, no markdown fences, no commentary.
 
@@ -85,12 +50,10 @@ The JSON shape:
 }
 
 Verdict rules:
-- "unsafe" if ANY confirmed allergen is present (nuts except coconut, eggs,
-  green peas / pea protein, mustard, shellfish), even if hidden under another
-  name.
+- "unsafe" if ANY of the child's confirmed allergens (defined in the
+  profile above) is present, even hidden under another name.
 - "caution" if no confirmed allergens BUT a potential trigger is present
-  (raw onion, raw garlic, vague "spices" or "natural flavors", or unclear
-  preparation that might hide an allergen).
+  (vague labels, unclear preparation, raw forms the family flagged).
 - "safe" only if neither is present.
 
 Findings rules:
@@ -102,28 +65,86 @@ Findings rules:
   finding that explains what was unclear.
 `;
 
-export function buildSystemPrompt(mode: Mode, kind: CheckKind): string {
+function bullet(s: string): string {
+  return `- ${s}`;
+}
+
+function profileSection(profile: Profile): string {
+  const hasAllergens = profile.confirmedAllergens.length > 0;
+  const hasTriggers = profile.potentialTriggers.length > 0;
+
+  const allergenLines = hasAllergens
+    ? profile.confirmedAllergens
+        .map((a) => {
+          const aliases = a.hiddenNames.length
+            ? ` — also watch for: ${a.hiddenNames.join(', ')}`
+            : '';
+          const note = a.notes ? ` (${a.notes})` : '';
+          return bullet(`**${a.label}**${note}${aliases}`);
+        })
+        .join('\n')
+    : bullet('_No confirmed allergens entered yet — assume nothing is allergenic._');
+
+  const triggerLines = hasTriggers
+    ? profile.potentialTriggers
+        .map((t) => bullet(`**${t.label}**${t.notes ? ` — ${t.notes}` : ''}`))
+        .join('\n')
+    : bullet('_No specific triggers entered._');
+
+  const ageStr =
+    typeof profile.childAge === 'number' ? `, age ${profile.childAge}` : '';
+
+  return `
+## Child profile
+
+Name: ${profile.childName || 'the child'}${ageStr}
+
+### Confirmed Allergens — Always Unsafe
+These must be avoided in ALL forms, including hidden or processed forms:
+
+${allergenLines}
+
+### Potential Triggers — Flag with caution
+These don't always cause a reaction but should be flagged so the caregiver
+can decide:
+
+${triggerLines}
+`;
+}
+
+export function buildSystemPrompt(
+  mode: Mode,
+  kind: CheckKind,
+  profile: Profile,
+): string {
+  const intro = `# Allergy Check
+
+You are an allergy-screening assistant helping a family decide whether a food
+is safe for their child. Use the child profile below as the source of truth
+for what's "confirmed allergic" vs. "trigger" vs. "fine".`;
+
   const tone =
     mode === 'lily'
       ? `
-TONE: You are talking to Lily, who is 7 years old.
+TONE: You are talking directly to ${profile.childName || 'the child'}, who is
+${typeof profile.childAge === 'number' ? `${profile.childAge} years old` : 'a young kid'}.
 - Use short sentences and easy words. No jargon.
 - Use friendly emojis sparingly to make it feel warm.
 - Replace clinical language with kid-friendly phrasing:
   - unsafe -> "this one's not safe for you"
   - safe -> "great news — this one looks safe!"
   - caution -> "this one has something that might bug you — let's check with a grown-up first"
-- Never make her feel bad or scared. Be matter-of-fact and positive.
-- If the verdict is "unsafe" or "caution", ALWAYS include a short encouragement
-  in the "encouragement" field, like "Don't worry, there are lots of yummy
-  things you CAN eat!"
+- Never make her/him feel bad or scared. Be matter-of-fact and positive.
+- If the verdict is "unsafe" or "caution", ALWAYS include a short
+  encouragement in the "encouragement" field, like "Don't worry, ${profile.childName || 'you'} —
+  there are lots of yummy things you CAN eat!"
 - Don't list every hidden ingredient name — just say what the problem is in
   plain terms.
 - Keep modification suggestions super simple: "You could ask them to leave
   that part off!"
 `
       : `
-TONE: You are talking to a parent or family caregiver.
+TONE: You are talking to a parent or family caregiver of ${profile.childName || 'the child'}.
 - Be friendly and clear, but informative.
 - Briefly explain hidden ingredient names (e.g. "albumin = egg protein") when
   relevant.
@@ -149,5 +170,12 @@ contains egg), warn clearly and suggest a simple modification in the
 "modifications".
 `;
 
-  return `${SKILL_PROMPT}\n${tone}\n${kindGuidance}\n${RESPONSE_FORMAT_INSTRUCTIONS}`;
+  return [
+    intro,
+    profileSection(profile),
+    HIDDEN_INGREDIENT_TABLE,
+    tone,
+    kindGuidance,
+    RESPONSE_FORMAT_INSTRUCTIONS,
+  ].join('\n');
 }

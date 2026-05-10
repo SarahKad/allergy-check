@@ -4,16 +4,19 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
 import { UserProvider, useUser } from './src/lib/UserContext';
+import { ProfileProvider } from './src/lib/ProfileContext';
 import { WelcomeScreen } from './src/screens/WelcomeScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { ResultScreen } from './src/screens/ResultScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
+import { ProfileScreen } from './src/screens/ProfileScreen';
 import { CheckResult } from './src/lib/anthropic';
 
 type Route =
   | { name: 'home' }
   | { name: 'result'; result: CheckResult }
-  | { name: 'settings' };
+  | { name: 'settings' }
+  | { name: 'profile' };
 
 function Shell() {
   const { palette, mode } = useTheme();
@@ -29,7 +32,7 @@ function Shell() {
         onResult={(r) => setRoute({ name: 'result', result: r })}
         onSettings={() => setRoute({ name: 'settings' })}
         onChangeUser={() => setRoute({ name: 'settings' })}
-        requireApiKeySetup={() => setRoute({ name: 'settings' })}
+        requireFamilyCodeSetup={() => setRoute({ name: 'settings' })}
       />
     );
   } else if (route.name === 'result') {
@@ -40,8 +43,15 @@ function Shell() {
         onHome={() => setRoute({ name: 'home' })}
       />
     );
+  } else if (route.name === 'profile') {
+    content = <ProfileScreen onBack={() => setRoute({ name: 'settings' })} />;
   } else {
-    content = <SettingsScreen onBack={() => setRoute({ name: 'home' })} />;
+    content = (
+      <SettingsScreen
+        onBack={() => setRoute({ name: 'home' })}
+        onOpenProfile={() => setRoute({ name: 'profile' })}
+      />
+    );
   }
 
   return (
@@ -56,9 +66,11 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <ThemeProvider>
-        <UserProvider>
-          <Shell />
-        </UserProvider>
+        <ProfileProvider>
+          <UserProvider>
+            <Shell />
+          </UserProvider>
+        </ProfileProvider>
       </ThemeProvider>
     </SafeAreaProvider>
   );

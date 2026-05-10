@@ -1,0 +1,9 @@
+name = "allergy-check-proxy"
+main = "src/index.ts"
+compatibility_date = "2025-05-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Set these via:
+#   wrangler secret put ANTHROPIC_API_KEY
+#   wrangler secret put FAMILY_CODE
+# Do NOT commit secret values here.

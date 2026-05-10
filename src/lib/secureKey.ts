@@ -2,10 +2,13 @@ import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const KEY = 'allergy-check.anthropicKey.v1';
+// The "family code" is the shared secret each installed app sends to the
+// proxy in `x-api-key`. The proxy validates it and swaps in the real
+// Anthropic key. Stored in SecureStore on device; on web (Expo dev) we fall
+// back to AsyncStorage.
 
-// SecureStore is unavailable on web; fall back to AsyncStorage there so the
-// developer flow still works in the browser.
+const KEY = 'allergy-check.familyCode.v1';
+
 async function getStorage(): Promise<{
   getItem: (k: string) => Promise<string | null>;
   setItem: (k: string, v: string) => Promise<void>;
@@ -25,17 +28,17 @@ async function getStorage(): Promise<{
   };
 }
 
-export async function getApiKey(): Promise<string | null> {
+export async function getFamilyCode(): Promise<string | null> {
   const s = await getStorage();
   return s.getItem(KEY);
 }
 
-export async function setApiKey(value: string): Promise<void> {
+export async function setFamilyCode(value: string): Promise<void> {
   const s = await getStorage();
   await s.setItem(KEY, value);
 }
 
-export async function clearApiKey(): Promise<void> {
+export async function clearFamilyCode(): Promise<void> {
   const s = await getStorage();
   await s.deleteItem(KEY);
 }
