@@ -1,0 +1,48 @@
+{
+  "expo": {
+    "name": "Allergy Check",
+    "slug": "allergy-check",
+    "scheme": "allergycheck",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0B1220"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.allergycheck.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Allergy Check uses your camera to scan ingredient labels.",
+        "NSPhotoLibraryUsageDescription": "Allergy Check uses photos of labels to check ingredients."
+      }
+    },
+    "android": {
+      "package": "com.allergycheck.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0B1220"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false,
+      "permissions": ["CAMERA", "READ_EXTERNAL_STORAGE"]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Allergy Check uses your camera to scan ingredient labels.",
+          "photosPermission": "Allergy Check uses photos of labels to check ingredients."
+        }
+      ],
+      "expo-secure-store"
+    ]
+  }
+}
