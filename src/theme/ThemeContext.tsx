@@ -31,7 +31,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const setPref = (p: ThemePref) => {
     setPrefState(p);
     AsyncStorage.setItem(STORAGE_KEY, p).catch(() => {});
-    if (p !== 'system') Appearance.setColorScheme(p);
+    // react-native-web doesn't ship Appearance.setColorScheme; guard the call
+    // so it's a no-op on web (the local `mode` derivation handles UI updates).
+    if (p !== 'system' && typeof Appearance.setColorScheme === 'function') {
+      Appearance.setColorScheme(p);
+    }
   };
 
   const mode: ThemeMode = pref === 'system' ? (system === 'dark' ? 'dark' : 'light') : pref;
